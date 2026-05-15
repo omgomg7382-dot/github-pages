@@ -1,0 +1,2762 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rumble Dodgeball Simulator</title>
+  <style>
+    :root {
+      --bg: #08111f;
+      --panel: #101c2e;
+      --panel-2: #14233a;
+      --panel-3: #0d1728;
+      --line: rgba(255, 255, 255, 0.78);
+      --muted: #8fa1ba;
+      --text: #eff6ff;
+      --blue: #126fbd;
+      --blue-2: #0c4c8b;
+      --red: #ef4444;
+      --yellow: #facc15;
+      --gold: #f5c84c;
+      --green: #22c55e;
+      --glass: rgba(208, 244, 255, 0.35);
+      --card-radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 18% 12%, rgba(20, 103, 177, 0.2), transparent 32%),
+        linear-gradient(135deg, #070d18 0%, #091424 44%, #111827 100%);
+      color: var(--text);
+      font-family: "Segoe UI", "Noto Sans KR", Arial, sans-serif;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      border-radius: 6px;
+      background: #1d4ed8;
+      color: #fff;
+      cursor: pointer;
+      min-height: 36px;
+      padding: 8px 12px;
+      transition: transform 120ms ease, background 120ms ease, opacity 120ms ease;
+    }
+
+    button:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      transform: none;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(780px, 1fr) 360px;
+      grid-template-rows: auto 1fr;
+      gap: 14px;
+      height: 100vh;
+      padding: 14px;
+    }
+
+    .scoreboard {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 240px repeat(7, minmax(110px, 1fr));
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .brand,
+    .metric {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--card-radius);
+      background: linear-gradient(180deg, rgba(16, 28, 46, 0.96), rgba(10, 19, 34, 0.96));
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+      padding: 12px 14px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      color: #ffffff;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: 0;
+      line-height: 1.08;
+      white-space: nowrap;
+    }
+
+    .brand span {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 10px 12px;
+    }
+
+    .metric label {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+
+    .metric strong {
+      display: block;
+      overflow: hidden;
+      color: #ffffff;
+      font-size: 17px;
+      line-height: 1.18;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .metric small {
+      display: block;
+      margin-top: 3px;
+      color: #b5c7df;
+      font-size: 11px;
+      min-height: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .main {
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .arena-shell {
+      position: relative;
+      width: min(800px, calc(100vh - 132px), calc(100vw - 410px));
+      min-width: 620px;
+      aspect-ratio: 1 / 1;
+      border-radius: 8px;
+      background: #07101d;
+      box-shadow:
+        0 20px 48px rgba(0, 0, 0, 0.46),
+        0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-radius: 8px;
+      background: #0a5a9b;
+    }
+
+    .outside-label {
+      position: absolute;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(3, 8, 15, 0.74);
+      color: #d6e6ff;
+      font-size: 12px;
+      font-weight: 700;
+      pointer-events: none;
+      text-transform: uppercase;
+      backdrop-filter: blur(4px);
+    }
+
+    .outside-label.top,
+    .outside-label.bottom {
+      left: 72px;
+      right: 72px;
+      height: 28px;
+    }
+
+    .outside-label.top {
+      top: -34px;
+    }
+
+    .outside-label.bottom {
+      bottom: -34px;
+    }
+
+    .outside-label.left,
+    .outside-label.right {
+      top: 72px;
+      bottom: 72px;
+      width: 28px;
+      writing-mode: vertical-rl;
+    }
+
+    .outside-label.left {
+      left: -34px;
+    }
+
+    .outside-label.right {
+      right: -34px;
+    }
+
+    .side {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto minmax(170px, 1fr) minmax(160px, 0.75fr);
+      gap: 12px;
+    }
+
+    .control-card,
+    .settings-card,
+    .log-card,
+    .out-card {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--card-radius);
+      background: rgba(16, 28, 46, 0.95);
+      box-shadow: 0 12px 26px rgba(0, 0, 0, 0.26);
+      min-width: 0;
+    }
+
+    .control-card {
+      padding: 12px;
+    }
+
+    .control-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .secondary {
+      background: #334155;
+    }
+
+    .secondary:hover {
+      background: #475569;
+    }
+
+    .danger {
+      background: #b91c1c;
+    }
+
+    .danger:hover {
+      background: #dc2626;
+    }
+
+    .settings-card {
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+      background: rgba(8, 17, 31, 0.52);
+    }
+
+    .panel-title h2 {
+      margin: 0;
+      font-size: 14px;
+      letter-spacing: 0;
+    }
+
+    .panel-title span {
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .settings-grid {
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 12px;
+      scrollbar-color: #334155 transparent;
+    }
+
+    .field {
+      min-width: 0;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    .field label {
+      display: block;
+      margin-bottom: 5px;
+      color: #b8c7dd;
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      min-height: 34px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      background: #0a1323;
+      color: #fff;
+      padding: 7px 9px;
+      outline: 0;
+    }
+
+    .field input[type="checkbox"] {
+      width: 18px;
+      min-height: 18px;
+      accent-color: #2563eb;
+    }
+
+    .check-field {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 34px;
+      padding: 8px 9px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      background: #0a1323;
+    }
+
+    .check-field label {
+      margin: 0;
+      font-size: 12px;
+    }
+
+    .range-readout {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .range-readout input {
+      padding: 0;
+    }
+
+    .range-readout output {
+      width: 34px;
+      color: #dbeafe;
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .log-card,
+    .out-card {
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .log-list,
+    .out-list {
+      min-height: 0;
+      overflow: auto;
+      padding: 10px 12px 12px;
+      scrollbar-color: #334155 transparent;
+    }
+
+    .log-entry {
+      margin-bottom: 8px;
+      padding-left: 9px;
+      border-left: 3px solid #3b82f6;
+      color: #d7e7ff;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .log-entry.danger {
+      border-color: #ef4444;
+      background: transparent;
+    }
+
+    .log-entry.good {
+      border-color: #22c55e;
+    }
+
+    .log-entry.warn {
+      border-color: #facc15;
+    }
+
+    .out-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      max-width: 100%;
+      margin: 0 5px 6px 0;
+      padding: 5px 7px;
+      border-radius: 999px;
+      background: #202b3d;
+      color: #c8d5e8;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .start-screen,
+    .draw-screen,
+    .result-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(3, 8, 15, 0.78);
+      backdrop-filter: blur(8px);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .modal {
+      width: min(920px, 96vw);
+      max-height: 92vh;
+      overflow: auto;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      background: linear-gradient(180deg, #12203a 0%, #08111f 100%);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.58);
+    }
+
+    .modal-head {
+      padding: 26px 28px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .modal-head h2 {
+      margin: 0;
+      color: #fff;
+      font-size: 34px;
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .modal-head p {
+      max-width: 760px;
+      margin: 10px 0 0;
+      color: #b6c7dd;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .start-form {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      padding: 20px 28px 26px;
+    }
+
+    .start-form .field {
+      padding: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 8px;
+      background: rgba(9, 18, 32, 0.72);
+    }
+
+    .modal-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .modal-actions button {
+      min-width: 160px;
+      min-height: 42px;
+      font-weight: 700;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: #b8c7dd;
+      font-size: 12px;
+    }
+
+    .draw-body {
+      padding: 18px 24px 24px;
+    }
+
+    .draw-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding: 12px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      background: rgba(8, 17, 31, 0.68);
+    }
+
+    .draw-status strong {
+      color: #fff;
+      font-size: 15px;
+    }
+
+    .draw-status span {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .draw-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      max-height: 48vh;
+      overflow: auto;
+      padding-right: 4px;
+      scrollbar-color: #334155 transparent;
+    }
+
+    .draw-card {
+      min-height: 74px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      background: #0a1323;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+      padding: 9px;
+      opacity: 0.42;
+      transform: translateY(4px);
+      transition: opacity 180ms ease, transform 180ms ease, border-color 180ms ease;
+    }
+
+    .draw-card.revealed {
+      opacity: 1;
+      transform: translateY(0);
+      border-color: rgba(96, 165, 250, 0.58);
+      background: linear-gradient(180deg, rgba(20, 43, 72, 0.96), rgba(9, 18, 32, 0.96));
+    }
+
+    .draw-card b {
+      color: #fff;
+      font-size: 16px;
+      line-height: 1.05;
+    }
+
+    .draw-card span {
+      color: #b7c9df;
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    .draw-card small {
+      color: #60a5fa;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .legend i {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      margin-right: 4px;
+      border-radius: 50%;
+      vertical-align: -1px;
+    }
+
+    .result-body {
+      padding: 18px 22px 24px;
+    }
+
+    .winner-card {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .winner-card > div,
+    .mvp-card {
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      background: rgba(10, 19, 35, 0.76);
+      padding: 14px;
+    }
+
+    .winner-card h3,
+    .mvp-card h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .winner-card strong {
+      color: #fff;
+      font-size: 28px;
+    }
+
+    .mvp-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .mvp-grid div {
+      min-width: 0;
+      padding: 10px;
+      border-radius: 6px;
+      background: #101c2e;
+    }
+
+    .mvp-grid span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .mvp-grid b {
+      display: block;
+      margin-top: 4px;
+      overflow: hidden;
+      color: #fff;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      background: rgba(8, 17, 31, 0.8);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+      color: #dfeaff;
+      font-size: 12px;
+    }
+
+    th,
+    td {
+      padding: 9px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      color: #aebed4;
+      font-weight: 700;
+      background: rgba(14, 24, 41, 0.9);
+      position: sticky;
+      top: 0;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .result-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    @media (max-width: 1180px) {
+      body {
+        overflow: auto;
+      }
+
+      .app {
+        height: auto;
+        min-height: 100vh;
+        grid-template-columns: 1fr;
+      }
+
+      .scoreboard {
+        grid-template-columns: repeat(4, minmax(150px, 1fr));
+      }
+
+      .brand {
+        grid-column: 1 / -1;
+      }
+
+      .arena-shell {
+        width: min(800px, 92vw);
+        min-width: 0;
+      }
+
+      .side {
+        grid-template-rows: auto auto 260px;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .app {
+        padding: 10px;
+      }
+
+      .scoreboard {
+        grid-template-columns: repeat(2, minmax(140px, 1fr));
+      }
+
+      .settings-grid,
+      .start-form,
+      .winner-card,
+      .mvp-grid,
+      .draw-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .modal-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .outside-label {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="scoreboard" aria-label="Rumble Dodgeball scoreboard">
+      <div class="brand">
+        <h1>Rumble Dodgeball</h1>
+        <span>Top-view rules simulator · 16m x 16m arena</span>
+      </div>
+      <div class="metric">
+        <label>상태</label>
+        <strong id="phaseText">대기</strong>
+        <small id="clockText">00:00</small>
+      </div>
+      <div class="metric">
+        <label>생존자</label>
+        <strong id="aliveText">0 / 20</strong>
+        <small id="enteredText">입장 0명</small>
+      </div>
+      <div class="metric">
+        <label>다음 입장</label>
+        <strong id="nextText">-</strong>
+        <small id="entryTimerText">-</small>
+      </div>
+      <div class="metric">
+        <label>인터벌</label>
+        <strong id="intervalText">-</strong>
+        <small id="intervalSubText">공 줍기/공격 금지</small>
+      </div>
+      <div class="metric">
+        <label>수집 도전자</label>
+        <strong id="challengerText">-</strong>
+        <small id="challengerTimerText">공 10개 + 5분 생존</small>
+      </div>
+      <div class="metric">
+        <label>승리 조건</label>
+        <strong id="winProgressText">대기 중</strong>
+        <small id="ballsText">공 0개</small>
+      </div>
+      <div class="metric">
+        <label>속도</label>
+        <strong id="speedText">x1</strong>
+        <small>테스트 가속</small>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="arena-shell">
+        <div class="outside-label top">Audience Stand · eliminated throw-in lane</div>
+        <div class="outside-label bottom">Equipment Table · bags and softballs</div>
+        <div class="outside-label left">Glass Wall</div>
+        <div class="outside-label right">Glass Wall</div>
+        <canvas id="arena" width="800" height="800" aria-label="Rumble Dodgeball arena"></canvas>
+      </div>
+    </main>
+
+    <aside class="side">
+      <section class="control-card">
+        <div class="control-row">
+          <button id="startBtn">시작</button>
+          <button id="pauseBtn" class="secondary" disabled>일시정지</button>
+          <button id="restartBtn" class="danger" disabled>재시작</button>
+        </div>
+      </section>
+
+      <section class="settings-card">
+        <div class="panel-title">
+          <h2>설정 패널</h2>
+          <span>인터벌 중 값 조절 가능</span>
+        </div>
+        <div class="settings-grid" id="settingsGrid">
+          <div class="field">
+            <label for="playerCount">플레이어 수</label>
+            <input id="playerCount" type="number" min="4" max="20" value="20" />
+          </div>
+          <div class="field">
+            <label for="initialBalls">초기 공 개수</label>
+            <input id="initialBalls" type="number" min="0" max="80" value="18" />
+          </div>
+          <div class="field">
+            <label for="intervalBalls">인터벌 투입 공</label>
+            <input id="intervalBalls" type="number" min="0" max="30" value="3" />
+          </div>
+          <div class="field">
+            <label for="entryInterval">입장 간격(초)</label>
+            <input id="entryInterval" type="number" min="10" max="180" value="60" />
+          </div>
+          <div class="field">
+            <label for="intervalDuration">인터벌 시간(초)</label>
+            <input id="intervalDuration" type="number" min="5" max="90" value="30" />
+          </div>
+          <div class="field">
+            <label for="collectTarget">수집 필요 공</label>
+            <input id="collectTarget" type="number" min="3" max="20" value="10" />
+          </div>
+          <div class="field">
+            <label for="collectSurvival">수집 생존 시간(초)</label>
+            <input id="collectSurvival" type="number" min="30" max="600" value="300" />
+          </div>
+          <div class="field">
+            <label for="bagCount">가방 수</label>
+            <input id="bagCount" type="number" min="0" max="15" value="15" />
+          </div>
+          <div class="field full">
+            <label for="teaming">티밍 성향 강도</label>
+            <div class="range-readout">
+              <input id="teaming" type="range" min="0" max="100" value="35" />
+              <output id="teamingOut">35</output>
+            </div>
+          </div>
+          <div class="field full">
+            <label for="crowd">관중 개입 강도</label>
+            <div class="range-readout">
+              <input id="crowd" type="range" min="0" max="100" value="55" />
+              <output id="crowdOut">55</output>
+            </div>
+          </div>
+          <div class="field full">
+            <label for="hitRate">공 적중률</label>
+            <div class="range-readout">
+              <input id="hitRate" type="range" min="15" max="100" value="30" />
+              <output id="hitRateOut">30</output>
+            </div>
+          </div>
+          <div class="field">
+            <label for="simSpeed">시뮬 속도</label>
+            <select id="simSpeed">
+              <option value="1">x1</option>
+              <option value="2">x2</option>
+              <option value="5" selected>x5</option>
+              <option value="10">x10</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="randomBallSize">공 크기 랜덤</label>
+            <div class="check-field">
+              <label for="randomBallSize">동일 확률</label>
+              <input id="randomBallSize" type="checkbox" checked />
+            </div>
+          </div>
+          <div class="field full">
+            <label for="teamMode">팀전 여부</label>
+            <div class="check-field">
+              <label for="teamMode">A/B 팀 색상과 아군 회피 적용</label>
+              <input id="teamMode" type="checkbox" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="out-card">
+        <div class="panel-title">
+          <h2>탈락 / 관중석</h2>
+          <span id="outCountText">0명</span>
+        </div>
+        <div class="out-list" id="outList"></div>
+      </section>
+
+      <section class="log-card">
+        <div class="panel-title">
+          <h2>이벤트 로그</h2>
+          <span>실시간 판정</span>
+        </div>
+        <div class="log-list" id="logList"></div>
+      </section>
+    </aside>
+  </div>
+
+  <div class="start-screen" id="startScreen">
+    <div class="modal">
+      <div class="modal-head">
+        <h2>Rumble Dodgeball</h2>
+        <p>
+          1분마다 선수가 입장하고, 30초 인터벌마다 구역 재배치와 관중 공 투입이 일어나는 피구 기반 로얄럼블 시뮬레이터입니다.
+          설정값을 바꿔 공 개수, 가방 밸런스, 티밍 가능성, 수집 승리 조건을 빠르게 테스트하세요.
+        </p>
+      </div>
+      <div class="start-form">
+        <div class="field">
+          <label for="startPlayers">플레이어 수</label>
+          <input id="startPlayers" type="number" min="4" max="20" value="20" />
+        </div>
+        <div class="field">
+          <label for="startInitialBalls">초기 공 개수</label>
+          <input id="startInitialBalls" type="number" min="0" max="80" value="18" />
+        </div>
+        <div class="field">
+          <label for="startIntervalBalls">인터벌 투입 공</label>
+          <input id="startIntervalBalls" type="number" min="0" max="30" value="3" />
+        </div>
+        <div class="field">
+          <label for="startSpeed">시뮬 속도</label>
+          <select id="startSpeed">
+            <option value="1">x1</option>
+            <option value="2">x2</option>
+            <option value="5" selected>x5</option>
+            <option value="10">x10</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <div class="legend">
+            <span><i style="background:#60a5fa"></i>일반 플레이어</span>
+            <span><i style="background:#f5c84c"></i>수집 도전자</span>
+            <span><i style="background:#ef4444"></i>아웃/위험</span>
+            <span><i style="background:#f8fafc"></i>공</span>
+          </div>
+          <button id="modalStartBtn">시뮬레이션 시작</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="draw-screen hidden" id="drawScreen">
+    <div class="modal">
+      <div class="modal-head">
+        <h2>입장 순서 추첨</h2>
+        <p>
+          참가자들이 무작위로 번호를 뽑습니다. 추첨된 번호가 경기 내 플레이어 ID가 되며,
+          경기는 P1~P4가 먼저 입장한 뒤 P5, P6, P7 순서로 1명씩 추가됩니다.
+        </p>
+      </div>
+      <div class="draw-body">
+        <div class="draw-status">
+          <strong id="drawStatusText">추첨 준비 중</strong>
+          <span id="drawSubText">P1~P4 초기 입장, 이후 P5부터 순차 입장</span>
+        </div>
+        <div class="draw-grid" id="drawGrid"></div>
+        <div class="result-actions">
+          <button id="drawStartBtn" disabled>추첨 완료 후 경기 시작</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="result-screen hidden" id="resultScreen">
+    <div class="modal">
+      <div class="modal-head">
+        <h2>경기 결과</h2>
+        <p id="resultReason">승리 조건 달성</p>
+      </div>
+      <div class="result-body">
+        <div class="winner-card">
+          <div>
+            <h3>Winner</h3>
+            <strong id="winnerText">-</strong>
+            <p id="winnerDetail" style="margin:8px 0 0;color:#b6c7dd;font-size:13px;"></p>
+          </div>
+          <div class="mvp-card">
+            <h3>MVP 칭호</h3>
+            <div class="mvp-grid">
+              <div><span>최다 킬</span><b id="mvpKills">-</b></div>
+              <div><span>최다 공 수집</span><b id="mvpBalls">-</b></div>
+              <div><span>최장 생존</span><b id="mvpSurvival">-</b></div>
+            </div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>순위</th>
+                <th>플레이어</th>
+                <th>점수</th>
+                <th>킬</th>
+                <th>최대 보유 공</th>
+                <th>생존 시간</th>
+                <th>가방</th>
+                <th>상태</th>
+              </tr>
+            </thead>
+            <tbody id="resultRows"></tbody>
+          </table>
+        </div>
+        <div class="result-actions">
+          <button id="resultRestartBtn">설정 유지 후 다시 시작</button>
+          <button id="resultCloseBtn" class="secondary">결과 닫기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    "use strict";
+
+    // Rumble Dodgeball은 실제 룰 실험용 프로토타입이므로
+    // 물리 계산은 가볍게 유지하고, 판정 이유가 로그에 드러나도록 구성했다.
+    const ARENA = 800;
+    const PLAYER_RADIUS = 15;
+    const LINE_WIDTH = 6;
+    const ZONE_MARGIN = 26;
+    const MAX_LOGS = 120;
+
+    const BAG_TYPES = {
+      small: {
+        name: "Small Bag",
+        icon: "Round Shell",
+        capacity: 10,
+        defense: 0.10,
+        speed: 78,
+        radius: 10,
+        color: "#93c5fd"
+      },
+      medium: {
+        name: "Medium Bag",
+        icon: "Hermit Shell",
+        capacity: 10,
+        defense: 0.10,
+        speed: 70,
+        radius: 13,
+        color: "#7dd3fc"
+      },
+      large: {
+        name: "Large Bag",
+        icon: "Turtle Shell",
+        capacity: 10,
+        defense: 0.15,
+        speed: 60,
+        radius: 17,
+        color: "#38bdf8"
+      }
+    };
+
+    const BALL_TYPES = {
+      small: { label: "소형", radius: 6, hitBonus: 0, color: "#f8fafc" },
+      medium: { label: "중형", radius: 8, hitBonus: 0.03, color: "#dbeafe" },
+      large: { label: "대형", radius: 10, hitBonus: 0.05, color: "#fde68a" }
+    };
+
+    const zones = [
+      { id: 1, label: "⓵", left: 0, top: 0, right: 400, bottom: 400, cx: 200, cy: 200 },
+      { id: 2, label: "⓶", left: 400, top: 0, right: 800, bottom: 400, cx: 600, cy: 200 },
+      { id: 3, label: "⓷", left: 0, top: 400, right: 400, bottom: 800, cx: 200, cy: 600 },
+      { id: 4, label: "⓸", left: 400, top: 400, right: 800, bottom: 800, cx: 600, cy: 600 }
+    ];
+
+    const dom = {
+      canvas: document.getElementById("arena"),
+      phaseText: document.getElementById("phaseText"),
+      clockText: document.getElementById("clockText"),
+      aliveText: document.getElementById("aliveText"),
+      enteredText: document.getElementById("enteredText"),
+      nextText: document.getElementById("nextText"),
+      entryTimerText: document.getElementById("entryTimerText"),
+      intervalText: document.getElementById("intervalText"),
+      intervalSubText: document.getElementById("intervalSubText"),
+      challengerText: document.getElementById("challengerText"),
+      challengerTimerText: document.getElementById("challengerTimerText"),
+      winProgressText: document.getElementById("winProgressText"),
+      ballsText: document.getElementById("ballsText"),
+      speedText: document.getElementById("speedText"),
+      startBtn: document.getElementById("startBtn"),
+      pauseBtn: document.getElementById("pauseBtn"),
+      restartBtn: document.getElementById("restartBtn"),
+      startScreen: document.getElementById("startScreen"),
+      modalStartBtn: document.getElementById("modalStartBtn"),
+      drawScreen: document.getElementById("drawScreen"),
+      drawGrid: document.getElementById("drawGrid"),
+      drawStatusText: document.getElementById("drawStatusText"),
+      drawSubText: document.getElementById("drawSubText"),
+      drawStartBtn: document.getElementById("drawStartBtn"),
+      resultScreen: document.getElementById("resultScreen"),
+      resultReason: document.getElementById("resultReason"),
+      winnerText: document.getElementById("winnerText"),
+      winnerDetail: document.getElementById("winnerDetail"),
+      resultRows: document.getElementById("resultRows"),
+      resultRestartBtn: document.getElementById("resultRestartBtn"),
+      resultCloseBtn: document.getElementById("resultCloseBtn"),
+      mvpKills: document.getElementById("mvpKills"),
+      mvpBalls: document.getElementById("mvpBalls"),
+      mvpSurvival: document.getElementById("mvpSurvival"),
+      logList: document.getElementById("logList"),
+      outList: document.getElementById("outList"),
+      outCountText: document.getElementById("outCountText")
+    };
+
+    const fields = {
+      playerCount: document.getElementById("playerCount"),
+      initialBalls: document.getElementById("initialBalls"),
+      intervalBalls: document.getElementById("intervalBalls"),
+      entryInterval: document.getElementById("entryInterval"),
+      intervalDuration: document.getElementById("intervalDuration"),
+      collectTarget: document.getElementById("collectTarget"),
+      collectSurvival: document.getElementById("collectSurvival"),
+      bagCount: document.getElementById("bagCount"),
+      teaming: document.getElementById("teaming"),
+      crowd: document.getElementById("crowd"),
+      hitRate: document.getElementById("hitRate"),
+      simSpeed: document.getElementById("simSpeed"),
+      randomBallSize: document.getElementById("randomBallSize"),
+      teamMode: document.getElementById("teamMode"),
+      startPlayers: document.getElementById("startPlayers"),
+      startInitialBalls: document.getElementById("startInitialBalls"),
+      startIntervalBalls: document.getElementById("startIntervalBalls"),
+      startSpeed: document.getElementById("startSpeed"),
+      teamingOut: document.getElementById("teamingOut"),
+      crowdOut: document.getElementById("crowdOut"),
+      hitRateOut: document.getElementById("hitRateOut")
+    };
+
+    const ctx = dom.canvas.getContext("2d");
+
+    let settings = readSettings();
+    let state = createEmptyState();
+    let lastFrame = performance.now();
+    let drawTimerId = null;
+    let drawAutoStartId = null;
+
+    function createEmptyState() {
+      return {
+        status: "start",
+        phase: "ready",
+        paused: false,
+        simTime: 0,
+        nextEntryTimer: 0,
+        intervalReturnEntryTimer: 0,
+        intervalTimer: 0,
+        intervalReason: "",
+        intervalEntrantText: "",
+        lastOutSummary: "",
+        players: [],
+        balls: [],
+        entryQueue: [],
+        logs: [],
+        eliminatedOrder: [],
+        drawAssignments: [],
+        drawRevealCount: 0,
+        nextBallId: 1,
+        winner: null,
+        winReason: "",
+        lastAiTick: 0,
+        needsImmediateEntry: false
+      };
+    }
+
+    function readSettings() {
+      return {
+        playerCount: clampInt(fields.playerCount.value, 4, 20),
+        initialBalls: clampInt(fields.initialBalls.value, 0, 80),
+        intervalBalls: clampInt(fields.intervalBalls.value, 0, 30),
+        entryInterval: clampInt(fields.entryInterval.value, 10, 180),
+        intervalDuration: clampInt(fields.intervalDuration.value, 5, 90),
+        collectTarget: clampInt(fields.collectTarget.value, 3, 20),
+        collectSurvival: clampInt(fields.collectSurvival.value, 30, 600),
+        bagCount: clampInt(fields.bagCount.value, 0, 15),
+        teaming: Number(fields.teaming.value) / 100,
+        crowd: Number(fields.crowd.value) / 100,
+        hitRate: Number(fields.hitRate.value) / 100,
+        simSpeed: Number(fields.simSpeed.value),
+        randomBallSize: fields.randomBallSize.checked,
+        teamMode: fields.teamMode.checked
+      };
+    }
+
+    function clampInt(value, min, max) {
+      const parsed = Number.parseInt(value, 10);
+      if (Number.isNaN(parsed)) return min;
+      return Math.max(min, Math.min(max, parsed));
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function rand(min, max) {
+      return min + Math.random() * (max - min);
+    }
+
+    function shuffle(list) {
+      const copy = list.slice();
+      for (let i = copy.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function distance(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    function fmtTime(seconds) {
+      const total = Math.max(0, Math.floor(seconds));
+      const m = Math.floor(total / 60).toString().padStart(2, "0");
+      const s = (total % 60).toString().padStart(2, "0");
+      return `${m}:${s}`;
+    }
+
+    function zoneById(id) {
+      return zones[id - 1];
+    }
+
+    function pointInZone(x, y, zoneId, margin = PLAYER_RADIUS) {
+      const z = zoneById(zoneId);
+      return x >= z.left + margin &&
+        x <= z.right - margin &&
+        y >= z.top + margin &&
+        y <= z.bottom - margin;
+    }
+
+    function randomPointInZone(zoneId, margin = ZONE_MARGIN) {
+      const z = zoneById(zoneId);
+      return {
+        x: rand(z.left + margin, z.right - margin),
+        y: rand(z.top + margin, z.bottom - margin)
+      };
+    }
+
+    function getZoneForPoint(x, y) {
+      if (x < 400 && y < 400) return 1;
+      if (x >= 400 && y < 400) return 2;
+      if (x < 400 && y >= 400) return 3;
+      return 4;
+    }
+
+    function getBagForNumber(number) {
+      if (number > settings.bagCount || number > 15) return null;
+      if (number <= 5) return BAG_TYPES.large;
+      if (number <= 10) return BAG_TYPES.medium;
+      return BAG_TYPES.small;
+    }
+
+    function createPlayer(number, entryIndex) {
+      const bag = getBagForNumber(number);
+      const aggression = rand(0.35, 0.92);
+      const collection = rand(0.28, 0.95);
+      const cooperation = rand(0.15, 0.88);
+      return {
+        id: `P${number}`,
+        number,
+        entryIndex,
+        participant: `참가자 ${number}`,
+        zone: 0,
+        x: -60,
+        y: -60,
+        vx: 0,
+        vy: 0,
+        facing: -Math.PI / 2,
+        entered: false,
+        alive: false,
+        outReason: "",
+        openingSaveLogged: false,
+        balls: 0,
+        maxBalls: 0,
+        hasBag: Boolean(bag),
+        bag,
+        bagCapacity: bag ? bag.capacity : 1,
+        collectTimer: 0,
+        collectStarted: false,
+        collectBonusAwarded: false,
+        cooperation,
+        aggression,
+        collection,
+        stamina: rand(68, 100),
+        kills: 0,
+        survivalTime: 0,
+        throwCooldown: rand(0.4, 1.8),
+        targetX: 0,
+        targetY: 0,
+        decisionTimer: 0,
+        color: colorForPlayer(number),
+        team: number % 2 === 0 ? "A" : "B"
+      };
+    }
+
+    function colorForPlayer(number) {
+      const palette = [
+        "#60a5fa", "#f87171", "#34d399", "#fbbf24", "#a78bfa",
+        "#fb7185", "#2dd4bf", "#f59e0b", "#38bdf8", "#c084fc",
+        "#4ade80", "#f472b6", "#22d3ee", "#eab308", "#93c5fd",
+        "#fdba74", "#86efac", "#c4b5fd", "#fca5a5", "#5eead4"
+      ];
+      return palette[(number - 1) % palette.length];
+    }
+
+    function ballSizeKey() {
+      if (!settings.randomBallSize) return "medium";
+      const keys = Object.keys(BALL_TYPES);
+      return keys[Math.floor(Math.random() * keys.length)];
+    }
+
+    function createStationaryBall(x, y, sizeKey = ballSizeKey()) {
+      return {
+        id: state.nextBallId += 1,
+        x,
+        y,
+        vx: 0,
+        vy: 0,
+        sizeKey,
+        moving: false,
+        ownerId: null,
+        throwerId: null,
+        direct: false,
+        bounced: false,
+        floorBounced: false,
+        bagBounced: false,
+        age: 0,
+        airTime: 0,
+        pickCooldown: 0.25,
+        trail: [],
+        trailSample: 0
+      };
+    }
+
+    function createThrownBall(player, target, sizeKey = ballSizeKey()) {
+      const size = BALL_TYPES[sizeKey];
+      const dx = target.x - player.x;
+      const dy = target.y - player.y;
+      const baseAngle = Math.atan2(dy, dx);
+      const distanceToTarget = Math.hypot(dx, dy);
+      const accuracy = settings.hitRate;
+      const aimNoise =
+        rand(-0.36, 0.36) * (1.15 - player.aggression) * (1.35 - accuracy) +
+        rand(-0.26, 0.26) * (1.05 - accuracy);
+      const angle = baseAngle + aimNoise;
+      const speed = rand(205, 310) + size.hitBonus * 360 + accuracy * 38;
+      return {
+        id: state.nextBallId += 1,
+        x: player.x + Math.cos(angle) * (PLAYER_RADIUS + size.radius + 3),
+        y: player.y + Math.sin(angle) * (PLAYER_RADIUS + size.radius + 3),
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        sizeKey,
+        moving: true,
+        ownerId: null,
+        throwerId: player.id,
+        direct: true,
+        bounced: false,
+        floorBounced: false,
+        bagBounced: false,
+        age: 0,
+        airTime: clamp(distanceToTarget / speed + rand(0.35, 0.9), 0.75, 1.85),
+        pickCooldown: 0.4,
+        trail: [],
+        trailSample: 0
+      };
+    }
+
+    function logEvent(text, type = "info") {
+      const entry = {
+        time: state.simTime,
+        text,
+        type
+      };
+      state.logs.unshift(entry);
+      if (state.logs.length > MAX_LOGS) state.logs.pop();
+      renderLogs();
+    }
+
+    function renderLogs() {
+      dom.logList.innerHTML = state.logs.map((entry) => {
+        const cls = entry.type === "danger" ? " danger" : entry.type === "good" ? " good" : entry.type === "warn" ? " warn" : "";
+        return `<div class="log-entry${cls}"><b>${fmtTime(entry.time)}</b> · ${escapeHtml(entry.text)}</div>`;
+      }).join("");
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function syncStartToSettings() {
+      fields.playerCount.value = fields.startPlayers.value;
+      fields.initialBalls.value = fields.startInitialBalls.value;
+      fields.intervalBalls.value = fields.startIntervalBalls.value;
+      fields.simSpeed.value = fields.startSpeed.value;
+      settings = readSettings();
+      updateRangeOutputs();
+    }
+
+    function syncSettingsToStart() {
+      fields.startPlayers.value = fields.playerCount.value;
+      fields.startInitialBalls.value = fields.initialBalls.value;
+      fields.startIntervalBalls.value = fields.intervalBalls.value;
+      fields.startSpeed.value = fields.simSpeed.value;
+    }
+
+    function updateRangeOutputs() {
+      fields.teamingOut.value = fields.teaming.value;
+      fields.crowdOut.value = fields.crowd.value;
+      fields.hitRateOut.value = fields.hitRate.value;
+      dom.speedText.textContent = `x${fields.simSpeed.value}`;
+    }
+
+    function makeDrawAssignments(count) {
+      const participants = shuffle(Array.from({ length: count }, (_, i) => i + 1));
+      return participants.map((participantNumber, index) => ({
+        participantNumber,
+        participant: `참가자 ${String(participantNumber).padStart(2, "0")}`,
+        playerNumber: index + 1,
+        playerId: `P${index + 1}`
+      }));
+    }
+
+    function clearDrawTimers() {
+      if (drawTimerId) {
+        clearInterval(drawTimerId);
+        drawTimerId = null;
+      }
+      if (drawAutoStartId) {
+        clearTimeout(drawAutoStartId);
+        drawAutoStartId = null;
+      }
+    }
+
+    function beginDraft() {
+      settings = readSettings();
+      clearDrawTimers();
+      state = createEmptyState();
+      state.status = "drawing";
+      state.phase = "draft";
+      state.drawAssignments = makeDrawAssignments(settings.playerCount);
+      state.drawRevealCount = 0;
+
+      dom.startScreen.classList.add("hidden");
+      dom.resultScreen.classList.add("hidden");
+      dom.drawScreen.classList.remove("hidden");
+      dom.drawStartBtn.disabled = true;
+      dom.drawStartBtn.textContent = "추첨 중...";
+      dom.pauseBtn.disabled = true;
+      dom.restartBtn.disabled = true;
+      dom.pauseBtn.textContent = "일시정지";
+
+      renderLogs();
+      renderDrawGrid();
+      updateOutList();
+      updateScoreboard();
+
+      drawTimerId = setInterval(() => {
+        state.drawRevealCount += 1;
+        renderDrawGrid();
+        updateScoreboard();
+        if (state.drawRevealCount >= state.drawAssignments.length) {
+          clearDrawTimers();
+          dom.drawStartBtn.disabled = false;
+          dom.drawStartBtn.textContent = "경기 시작";
+          dom.drawStatusText.textContent = "추첨 완료";
+          dom.drawSubText.textContent = "P1~P4가 먼저 입장하고, 이후 P5부터 순차 입장합니다.";
+          drawAutoStartId = setTimeout(() => startGame(state.drawAssignments), 1400);
+        }
+      }, 95);
+    }
+
+    function renderDrawGrid() {
+      dom.drawStatusText.textContent = `추첨 중 ${Math.min(state.drawRevealCount, state.drawAssignments.length)} / ${state.drawAssignments.length}`;
+      dom.drawSubText.textContent = "추첨된 P번호가 경기 입장 순서입니다.";
+      dom.drawGrid.innerHTML = state.drawAssignments.map((assignment, index) => {
+        const revealed = index < state.drawRevealCount;
+        return `
+          <div class="draw-card${revealed ? " revealed" : ""}">
+            <small>${assignment.playerNumber}번 입장</small>
+            <b>${revealed ? assignment.playerId : "P?"}</b>
+            <span>${revealed ? `${assignment.participant} 배정` : "추첨 대기"}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function startGame(assignments = null) {
+      settings = readSettings();
+      const activeAssignments = assignments || (state.drawAssignments.length ? state.drawAssignments : makeDrawAssignments(settings.playerCount));
+      clearDrawTimers();
+      state = createEmptyState();
+      state.drawAssignments = activeAssignments;
+      state.status = "running";
+      state.phase = "combat";
+      state.nextEntryTimer = settings.entryInterval;
+      state.logs = [];
+      state.players = [];
+      state.balls = [];
+      state.entryQueue = [];
+      state.eliminatedOrder = [];
+      state.nextBallId = 0;
+
+      const numbers = Array.from({ length: settings.playerCount }, (_, i) => i + 1);
+      state.players = numbers.map((number) => {
+        const player = createPlayer(number, number);
+        const assignment = activeAssignments.find((item) => item.playerNumber === number);
+        if (assignment) {
+          player.participant = assignment.participant;
+          player.entryIndex = assignment.playerNumber;
+        }
+        return player;
+      });
+
+      // 최초 P1~P4는 각각 다른 구역에 배치해 시작 조건을 고정한다.
+      for (let i = 1; i <= Math.min(4, settings.playerCount); i += 1) {
+        enterPlayer(i, i, true);
+      }
+
+      state.entryQueue = numbers.filter((number) => number > 4);
+      state.entryQueue.forEach((number, index) => {
+        const player = getPlayer(number);
+        player.entryIndex = number;
+      });
+
+      for (let i = 0; i < settings.initialBalls; i += 1) {
+        const zone = Math.floor(Math.random() * 4) + 1;
+        const pt = randomPointInZone(zone, 34);
+        state.balls.push(createStationaryBall(pt.x, pt.y));
+      }
+
+      dom.startScreen.classList.add("hidden");
+      dom.drawScreen.classList.add("hidden");
+      dom.resultScreen.classList.add("hidden");
+      dom.pauseBtn.disabled = false;
+      dom.restartBtn.disabled = false;
+      dom.pauseBtn.textContent = "일시정지";
+      dom.startBtn.textContent = "재시작";
+      dom.startBtn.disabled = false;
+      const firstFour = activeAssignments.slice(0, Math.min(4, activeAssignments.length))
+        .map((item) => `${item.participant}->${item.playerId}`)
+        .join(", ");
+      logEvent(`추첨 결과 반영: ${firstFour}`, "good");
+      logEvent(`게임 시작: P1~P4가 각 구역에 배치, 초기 공 ${settings.initialBalls}개`, "good");
+      if (state.entryQueue.length) {
+        logEvent(`다음 입장 후보: ${getNextEntryLabel()} (${settings.entryInterval}초 후)`);
+      }
+      updateOutList();
+      updateScoreboard();
+    }
+
+    function getPlayer(numberOrId) {
+      const id = typeof numberOrId === "number" ? `P${numberOrId}` : numberOrId;
+      return state.players.find((p) => p.id === id);
+    }
+
+    function enterPlayer(number, zoneId, initial = false) {
+      const player = getPlayer(number);
+      if (!player) return null;
+      const zone = zoneId || leastCrowdedZone();
+      const pt = randomPointInZone(zone, 70);
+      player.zone = zone;
+      player.x = pt.x;
+      player.y = pt.y;
+      player.targetX = pt.x;
+      player.targetY = pt.y;
+      player.entered = true;
+      player.alive = true;
+      player.outReason = "";
+      player.facing = rand(-Math.PI, Math.PI);
+      if (!initial) {
+        const bagText = player.hasBag ? `${player.bag.name} / ${player.bag.icon}` : "가방 없음";
+        logEvent(`${player.id} 입장 (${bagText}), ${settings.intervalDuration}초 인터벌 시작`, "warn");
+      }
+      return player;
+    }
+
+    function leastCrowdedZone() {
+      const counts = zoneCounts();
+      let best = 1;
+      let min = counts[1];
+      for (let id = 2; id <= 4; id += 1) {
+        if (counts[id] < min) {
+          min = counts[id];
+          best = id;
+        }
+      }
+      return best;
+    }
+
+    function zoneCounts() {
+      const counts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+      alivePlayers().forEach((p) => {
+        counts[p.zone] += 1;
+      });
+      return counts;
+    }
+
+    function alivePlayers() {
+      return state.players.filter((p) => p.entered && p.alive);
+    }
+
+    function enteredPlayers() {
+      return state.players.filter((p) => p.entered);
+    }
+
+    function getNextEntryLabel() {
+      return state.entryQueue.length ? `P${state.entryQueue[0]}` : "없음";
+    }
+
+    function triggerNextEntry(reason, scheduledEntry = false) {
+      if (state.phase === "interval" || state.status !== "running") return;
+      const next = state.entryQueue.shift();
+      if (!next) {
+        if (reason && alivePlayers().length > 1) {
+          startInterval(`잔여 플레이어 재배치: ${reason}`, null, scheduledEntry);
+        }
+        return;
+      }
+      enterPlayer(next, leastCrowdedZone(), false);
+      startInterval(reason || "신규 입장", next, scheduledEntry);
+    }
+
+    function startInterval(reason, entrantNumber, scheduledEntry = false) {
+      state.phase = "interval";
+      state.intervalTimer = settings.intervalDuration;
+      state.intervalReason = reason || "신규 입장";
+      state.intervalEntrantText = entrantNumber
+        ? `${getPlayer(entrantNumber)?.id || `P${entrantNumber}`} 신규 입장`
+        : "추가 입장 없음";
+      state.intervalReturnEntryTimer = scheduledEntry
+        ? settings.entryInterval
+        : clamp(state.nextEntryTimer, 1, settings.entryInterval);
+      redistributeBalanced();
+      const throwIns = crowdThrowIn();
+      if (entrantNumber) {
+        logEvent(`P${entrantNumber} 입장으로 인터벌 시작: ${reason}`, "warn");
+      } else {
+        logEvent(`인터벌 시작: ${reason}`, "warn");
+      }
+      if (throwIns > 0) {
+        logEvent(`관중/탈락 플레이어가 ${throwIns}개의 공을 경기장에 투입`, "warn");
+      }
+    }
+
+    function redistributeBalanced() {
+      const players = shuffle(alivePlayers());
+      if (!players.length) return;
+
+      // 4개 구역에 최소 1명씩, 그리고 2:2:1:1처럼 최대한 균등하게 재배치한다.
+      const total = players.length;
+      const base = Math.floor(total / 4);
+      const extra = total % 4;
+      const capacities = [base, base, base, base].map((v, index) => v + (index < extra ? 1 : 0));
+      for (let i = 0; i < capacities.length; i += 1) {
+        if (capacities[i] === 0 && total >= 4) capacities[i] = 1;
+      }
+      while (capacities.reduce((a, b) => a + b, 0) > total) {
+        const maxIndex = capacities.indexOf(Math.max(...capacities));
+        capacities[maxIndex] -= 1;
+      }
+
+      const zoneOrder = shuffle([1, 2, 3, 4]);
+      let cursor = 0;
+      zoneOrder.forEach((zoneId, zoneIndex) => {
+        const count = capacities[zoneIndex];
+        for (let i = 0; i < count && cursor < players.length; i += 1) {
+          const p = players[cursor];
+          const pt = randomPointInZone(zoneId, 64);
+          p.zone = zoneId;
+          p.x = pt.x;
+          p.y = pt.y;
+          p.targetX = pt.x;
+          p.targetY = pt.y;
+          p.vx = 0;
+          p.vy = 0;
+          cursor += 1;
+        }
+      });
+    }
+
+    function crowdThrowIn() {
+      const multiplier = 0.5 + settings.crowd;
+      const count = Math.round(settings.intervalBalls * multiplier);
+      for (let i = 0; i < count; i += 1) {
+        const side = Math.floor(Math.random() * 4);
+        const targetZone = Math.floor(Math.random() * 4) + 1;
+        const target = randomPointInZone(targetZone, 52);
+        let x = target.x;
+        let y = target.y;
+        if (side === 0) y = 6;
+        if (side === 1) x = ARENA - 6;
+        if (side === 2) y = ARENA - 6;
+        if (side === 3) x = 6;
+        const dx = target.x - x;
+        const dy = target.y - y;
+        const angle = Math.atan2(dy, dx) + rand(-0.4, 0.4);
+        const speed = rand(110, 210);
+        const ball = {
+          ...createStationaryBall(x, y),
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          moving: true,
+          direct: false,
+          bounced: true,
+          floorBounced: true,
+          age: 0,
+          airTime: 0.35,
+          pickCooldown: settings.intervalDuration + 0.4
+        };
+        addTrailPoint(ball, "floor");
+        state.balls.push(ball);
+      }
+      return count;
+    }
+
+    function endInterval() {
+      state.phase = "combat";
+      state.intervalTimer = 0;
+      state.intervalReason = "";
+      state.intervalEntrantText = "";
+      state.nextEntryTimer = state.intervalReturnEntryTimer || settings.entryInterval;
+      alivePlayers().forEach((p) => {
+        const pt = randomPointInZone(p.zone, 54);
+        p.x = pt.x;
+        p.y = pt.y;
+        p.targetX = pt.x;
+        p.targetY = pt.y;
+      });
+      logEvent("인터벌 종료: 현재 구역에 고정, 공격과 공 줍기 재개", "good");
+    }
+
+    function update(dt) {
+      if (state.status !== "running" || state.paused) return;
+      settings = readSettings();
+      const scaled = dt * settings.simSpeed;
+      state.simTime += scaled;
+      state.lastAiTick += scaled;
+
+      updateCollectTimers(scaled);
+      updateBalls(scaled);
+      updatePlayers(scaled);
+
+      if (state.phase === "interval") {
+        state.intervalTimer -= scaled;
+        if (state.intervalTimer <= 0) {
+          endInterval();
+        }
+      } else if (state.phase === "combat") {
+        state.nextEntryTimer -= scaled;
+        if (state.nextEntryTimer <= 0 && state.entryQueue.length) {
+          triggerNextEntry("입장 타이머 도달", true);
+        }
+      }
+
+      if (state.lastAiTick >= 0.18) {
+        runAi(state.lastAiTick);
+        state.lastAiTick = 0;
+      }
+
+      checkForcedEntryRules();
+      checkLastManStanding();
+      updateScoreboard();
+    }
+
+    function updateCollectTimers(dt) {
+      alivePlayers().forEach((p) => {
+        p.survivalTime += dt;
+        if (p.collectStarted) {
+          p.collectTimer -= dt;
+          if (p.collectTimer <= 0) {
+            endGame(p, "Collect & Survival", `${p.id}이 공 ${settings.collectTarget}개 수집 후 ${settings.collectSurvival}초 생존에 성공`);
+          }
+        } else if (p.hasBag && p.balls >= settings.collectTarget) {
+          p.collectStarted = true;
+          p.collectTimer = settings.collectSurvival;
+          if (!p.collectBonusAwarded) {
+            p.collectBonusAwarded = true;
+          }
+          logEvent(`${p.id}이 공 ${settings.collectTarget}개를 모아 생존 타이머 시작`, "good");
+        }
+      });
+    }
+
+    function updatePlayers(dt) {
+      alivePlayers().forEach((p) => {
+        p.throwCooldown = Math.max(0, p.throwCooldown - dt);
+        p.decisionTimer = Math.max(0, p.decisionTimer - dt);
+        p.stamina = clamp(p.stamina + dt * 1.6, 18, 100);
+
+        if (state.phase === "interval") {
+          wanderWithinZone(p, dt, 0.35);
+          return;
+        }
+
+        const oldX = p.x;
+        const oldY = p.y;
+        moveTowardTarget(p, dt);
+        maybePickupBall(p);
+
+        const z = zoneById(p.zone);
+        const intendedOutside = p.x < z.left + PLAYER_RADIUS ||
+          p.x > z.right - PLAYER_RADIUS ||
+          p.y < z.top + PLAYER_RADIUS ||
+        p.y > z.bottom - PLAYER_RADIUS;
+        if (intendedOutside && Math.random() < 0.003) {
+          eliminatePlayer(p, null, "선을 밟아 아웃", "line");
+          return;
+        }
+        p.x = clamp(p.x, z.left + PLAYER_RADIUS + 2, z.right - PLAYER_RADIUS - 2);
+        p.y = clamp(p.y, z.top + PLAYER_RADIUS + 2, z.bottom - PLAYER_RADIUS - 2);
+        if (Math.hypot(p.x - oldX, p.y - oldY) > 0.1) {
+          p.facing = Math.atan2(p.y - oldY, p.x - oldX);
+        }
+      });
+    }
+
+    function moveTowardTarget(p, dt) {
+      const dx = p.targetX - p.x;
+      const dy = p.targetY - p.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 6) {
+        const pt = randomPointInZone(p.zone, 50);
+        p.targetX = pt.x;
+        p.targetY = pt.y;
+        p.decisionTimer = rand(0.45, 1.2);
+        return;
+      }
+      const speed = (p.hasBag ? p.bag.speed : 86) * (0.72 + p.stamina / 180);
+      const step = Math.min(dist, speed * dt);
+      p.x += (dx / dist) * step;
+      p.y += (dy / dist) * step;
+      p.stamina -= dt * (p.hasBag && p.bag === BAG_TYPES.large ? 2.2 : 1.5);
+    }
+
+    function wanderWithinZone(p, dt, chance) {
+      if (p.decisionTimer <= 0 || Math.random() < chance * dt) {
+        const pt = randomPointInZone(p.zone, 50);
+        p.targetX = pt.x;
+        p.targetY = pt.y;
+        p.decisionTimer = rand(0.7, 1.8);
+      }
+      if (state.phase === "interval") {
+        moveTowardTarget(p, dt * 0.55);
+      }
+    }
+
+    function maybePickupBall(p) {
+      if (state.phase !== "combat") return;
+      if (p.balls >= p.bagCapacity) return;
+      for (let i = state.balls.length - 1; i >= 0; i -= 1) {
+        const ball = state.balls[i];
+        if (ball.moving || ball.pickCooldown > 0) continue;
+        if (getZoneForPoint(ball.x, ball.y) !== p.zone) continue;
+        const size = BALL_TYPES[ball.sizeKey];
+        if (Math.hypot(p.x - ball.x, p.y - ball.y) <= PLAYER_RADIUS + size.radius + 5) {
+          p.balls += 1;
+          p.maxBalls = Math.max(p.maxBalls, p.balls);
+          state.balls.splice(i, 1);
+          if (p.balls >= settings.collectTarget - 1 && p.hasBag) {
+            logEvent(`${p.id}이 공 ${p.balls}개 보유, 주변 플레이어 견제 대상`, "warn");
+          }
+          return;
+        }
+      }
+    }
+
+    function runAi(dt) {
+      if (state.phase !== "combat") return;
+      alivePlayers().forEach((p) => {
+        if (p.decisionTimer <= 0) decidePlayerAction(p);
+      if (p.balls > 0 && p.throwCooldown <= 0) {
+          const target = chooseTarget(p);
+          if (target) throwAtTarget(p, target);
+        }
+      });
+    }
+
+    function decidePlayerAction(p) {
+      const incoming = nearestIncomingThreat(p);
+      if (incoming) {
+        evadeBall(p, incoming);
+        p.decisionTimer = rand(0.25, 0.6);
+        return;
+      }
+
+      const canCollect = p.balls < p.bagCapacity;
+      const nearest = canCollect ? nearestFreeBallInZone(p) : null;
+      const danger = findCollectionThreat(p);
+      const collectBias = p.balls === 0 ? 1 : p.collection;
+      const shouldCollect = nearest && (collectBias > Math.random() || p.balls < 2);
+
+      if (danger && p.balls > 0 && danger.id !== p.id) {
+        p.targetX = zoneById(p.zone).cx + rand(-90, 90);
+        p.targetY = zoneById(p.zone).cy + rand(-90, 90);
+        p.decisionTimer = rand(0.45, 1.0);
+      } else if (shouldCollect) {
+        p.targetX = nearest.x;
+        p.targetY = nearest.y;
+        p.decisionTimer = rand(0.35, 0.8);
+      } else {
+        const pt = randomPointInZone(p.zone, 48);
+        p.targetX = pt.x;
+        p.targetY = pt.y;
+        p.decisionTimer = rand(0.8, 1.7);
+      }
+    }
+
+    function nearestFreeBallInZone(p) {
+      let best = null;
+      let bestDist = Infinity;
+      state.balls.forEach((ball) => {
+        if (ball.moving || ball.pickCooldown > 0) return;
+        if (getZoneForPoint(ball.x, ball.y) !== p.zone) return;
+        const d = Math.hypot(p.x - ball.x, p.y - ball.y);
+        if (d < bestDist) {
+          bestDist = d;
+          best = ball;
+        }
+      });
+      return best;
+    }
+
+    function nearestIncomingThreat(p) {
+      let best = null;
+      let bestScore = Infinity;
+      state.balls.forEach((ball) => {
+        if (!ball.moving || ball.throwerId === p.id || !ball.direct) return;
+        const relX = p.x - ball.x;
+        const relY = p.y - ball.y;
+        const dot = relX * ball.vx + relY * ball.vy;
+        if (dot <= 0) return;
+        const speedSq = ball.vx * ball.vx + ball.vy * ball.vy;
+        const t = dot / speedSq;
+        if (t > 0.8) return;
+        const closestX = ball.x + ball.vx * t;
+        const closestY = ball.y + ball.vy * t;
+        const miss = Math.hypot(p.x - closestX, p.y - closestY);
+        if (miss < PLAYER_RADIUS + 26 && t < bestScore) {
+          bestScore = t;
+          best = ball;
+        }
+      });
+      return best;
+    }
+
+    function evadeBall(p, ball) {
+      const angle = Math.atan2(ball.vy, ball.vx) + (Math.random() < 0.5 ? Math.PI / 2 : -Math.PI / 2);
+      const z = zoneById(p.zone);
+      p.targetX = clamp(p.x + Math.cos(angle) * rand(45, 110), z.left + 24, z.right - 24);
+      p.targetY = clamp(p.y + Math.sin(angle) * rand(45, 110), z.top + 24, z.bottom - 24);
+      p.stamina = Math.max(0, p.stamina - 5.5);
+    }
+
+    function findCollectionThreat(self) {
+      const candidates = alivePlayers()
+        .filter((p) => p.id !== self.id && p.zone !== self.zone && p.hasBag)
+        .filter((p) => p.collectStarted || p.balls >= Math.max(1, settings.collectTarget - 2));
+      candidates.sort((a, b) => {
+        const aScore = (a.collectStarted ? 100 : 0) + a.balls;
+        const bScore = (b.collectStarted ? 100 : 0) + b.balls;
+        return bScore - aScore;
+      });
+      return candidates[0] || null;
+    }
+
+    function chooseTarget(p) {
+      const candidates = alivePlayers().filter((other) => {
+        if (other.id === p.id) return false;
+        if (other.zone === p.zone) return false;
+        if (settings.teamMode && other.team === p.team && Math.random() < 0.86 * p.cooperation) return false;
+        return true;
+      });
+      if (!candidates.length) return null;
+
+      const collectionThreat = findCollectionThreat(p);
+      if (collectionThreat) return collectionThreat;
+
+      let best = null;
+      let bestScore = -Infinity;
+      candidates.forEach((target) => {
+        const dist = Math.hypot(target.x - p.x, target.y - p.y);
+        const collectPressure = target.balls >= settings.collectTarget - 2 ? 2.4 : 0;
+        const startedPressure = target.collectStarted ? 8 : 0;
+        const weakStamina = (100 - target.stamina) / 100;
+        const teamingPenalty = settings.teamMode && target.team === p.team ? settings.teaming * 3 : 0;
+        const temporaryAlliancePenalty = !settings.teamMode ? p.cooperation * settings.teaming * 0.8 : 0;
+        const score =
+          p.aggression * 2.2 +
+          collectPressure +
+          startedPressure +
+          weakStamina -
+          dist / 520 -
+          teamingPenalty -
+          temporaryAlliancePenalty +
+          Math.random() * 0.45;
+        if (score > bestScore) {
+          bestScore = score;
+          best = target;
+        }
+      });
+      return best;
+    }
+
+    function throwAtTarget(p, target) {
+      const sizeKey = chooseHeldBallSize(p);
+      p.balls -= 1;
+      const predicted = {
+        x: target.x + target.vx * rand(0.12, 0.28),
+        y: target.y + target.vy * rand(0.12, 0.28)
+      };
+      state.balls.push(createThrownBall(p, predicted, sizeKey));
+      p.throwCooldown = clamp(
+        1.48 - p.aggression * 0.34 - Math.min(p.balls, 5) * 0.04 + (1 - settings.hitRate) * 0.24,
+        0.68,
+        1.85
+      );
+      p.stamina = Math.max(0, p.stamina - 8);
+    }
+
+    function chooseHeldBallSize() {
+      // 저장된 공의 세부 크기는 추적하지 않고, 투척 시 설정 확률에 따라 하나를 대표로 선택한다.
+      return ballSizeKey();
+    }
+
+    function updateBalls(dt) {
+      for (let i = state.balls.length - 1; i >= 0; i -= 1) {
+        const ball = state.balls[i];
+        ball.age += dt;
+        ball.trailSample += dt;
+        ball.pickCooldown = Math.max(0, ball.pickCooldown - dt);
+        if (!ball.moving) continue;
+
+        ball.x += ball.vx * dt;
+        ball.y += ball.vy * dt;
+        addTrailPoint(ball);
+
+        const size = BALL_TYPES[ball.sizeKey];
+        if (ball.x < size.radius || ball.x > ARENA - size.radius) {
+          ball.x = clamp(ball.x, size.radius, ARENA - size.radius);
+          ball.vx *= -0.62;
+          invalidateBall(ball, "wall");
+        }
+        if (ball.y < size.radius || ball.y > ARENA - size.radius) {
+          ball.y = clamp(ball.y, size.radius, ARENA - size.radius);
+          ball.vy *= -0.62;
+          invalidateBall(ball, "wall");
+        }
+
+        if (ball.direct && ball.age > ball.airTime) {
+          ball.vx *= 0.55;
+          ball.vy *= 0.55;
+          invalidateBall(ball, "floor");
+        }
+
+        resolveBallHits(ball);
+
+        ball.vx *= Math.pow(0.48, dt);
+        ball.vy *= Math.pow(0.48, dt);
+        if (Math.hypot(ball.vx, ball.vy) < 18 || ball.age > 4.2) {
+          ball.moving = false;
+          ball.direct = false;
+          addTrailPoint(ball, "dead");
+          ball.pickCooldown = state.phase === "interval" ? Math.max(0.5, state.intervalTimer) : 0.25;
+        }
+      }
+    }
+
+    function currentTrailType(ball) {
+      if (ball.bagBounced) return "bag";
+      if (ball.floorBounced) return "floor";
+      if (ball.bounced) return "wall";
+      if (ball.direct) return "direct";
+      return "dead";
+    }
+
+    function addTrailPoint(ball, forcedType = null) {
+      if (!ball.trail) ball.trail = [];
+      if (ball.trailSample < 0.035 && !forcedType) return;
+      ball.trailSample = 0;
+      ball.trail.push({
+        x: ball.x,
+        y: ball.y,
+        type: forcedType || currentTrailType(ball)
+      });
+      if (ball.trail.length > 34) ball.trail.shift();
+    }
+
+    function invalidateBall(ball, reason) {
+      ball.direct = false;
+      if (reason === "wall") ball.bounced = true;
+      if (reason === "floor") ball.floorBounced = true;
+      addTrailPoint(ball, reason === "wall" ? "wall" : "floor");
+    }
+
+    function resolveBallHits(ball) {
+      const size = BALL_TYPES[ball.sizeKey];
+      const thrower = ball.throwerId ? state.players.find((p) => p.id === ball.throwerId) : null;
+      const throwerZone = thrower ? thrower.zone : null;
+
+      alivePlayers().forEach((p) => {
+        if (!ball.moving || !p.alive) return;
+        if (ball.throwerId === p.id && ball.age < 0.24) return;
+        const hitDist = (PLAYER_RADIUS + size.radius) * (0.7 + settings.hitRate * 0.3);
+        if (Math.hypot(p.x - ball.x, p.y - ball.y) > hitDist) return;
+
+        if (state.phase === "interval") {
+          invalidateBall(ball, "floor");
+          logEvent(`${p.id} 피격 판정 무효: 인터벌 중`, "warn");
+          return;
+        }
+        if (!ball.direct || ball.bounced || ball.floorBounced || ball.bagBounced) {
+          invalidateBall(ball, "floor");
+          return;
+        }
+        if (throwerZone && throwerZone === p.zone) {
+          invalidateBall(ball, "floor");
+          logEvent(`${p.id} 피격 판정 무효: 같은 구역 플레이어`, "warn");
+          return;
+        }
+
+        if (dodgesBall(p, ball, size)) {
+          invalidateBall(ball, "floor");
+          ball.moving = false;
+          ball.pickCooldown = 0.35;
+          if (Math.random() < 0.28) {
+            logEvent(`${p.id}이 몸을 틀어 직접 피격을 회피`, "good");
+          }
+          return;
+        }
+
+        const catchChance = clamp(0.12 + p.stamina / 700 + p.cooperation * 0.05 - size.hitBonus, 0.08, 0.32);
+        if (Math.random() < catchChance) {
+          catchBall(p, ball);
+          return;
+        }
+
+        if (isBagBlock(p, ball)) {
+          ball.bagBounced = true;
+          ball.direct = false;
+          addTrailPoint(ball, "bag");
+          ball.vx *= -0.42;
+          ball.vy *= -0.42;
+          ball.pickCooldown = 0.55;
+          logEvent(`${p.id}의 ${p.bag.icon}에 맞아 공격 무효`, "warn");
+          return;
+        }
+
+        eliminatePlayer(p, thrower, `${thrower ? thrower.id : "외부 공"}의 직접 투구에 몸 피격`, "hit");
+        ball.moving = false;
+        ball.direct = false;
+        ball.pickCooldown = 0.45;
+      });
+    }
+
+    function catchBall(p, ball) {
+      ball.moving = false;
+      ball.direct = false;
+      ball.pickCooldown = 0.3;
+      if (p.balls < p.bagCapacity) {
+        p.balls += 1;
+        p.maxBalls = Math.max(p.maxBalls, p.balls);
+        const index = state.balls.indexOf(ball);
+        if (index >= 0) state.balls.splice(index, 1);
+      }
+      logEvent(`${p.id}이 공을 잡아 공격 무효`, "good");
+    }
+
+    function dodgesBall(p, ball, size) {
+      const speed = Math.hypot(ball.vx, ball.vy);
+      const speedPressure = clamp((speed - 180) / 280, 0, 0.18);
+      const sizePressure = size.hitBonus * 1.25;
+      const staminaHelp = p.stamina / 680;
+      const lowAccuracyHelp = (1 - settings.hitRate) * 0.42;
+      const chance = clamp(0.12 + lowAccuracyHelp + staminaHelp - speedPressure - sizePressure, 0.08, 0.68);
+      return Math.random() < chance;
+    }
+
+    function isBagBlock(p, ball) {
+      if (!p.hasBag) return false;
+      const bagDir = p.facing + Math.PI;
+      const bagX = p.x + Math.cos(bagDir) * (PLAYER_RADIUS * 0.75);
+      const bagY = p.y + Math.sin(bagDir) * (PLAYER_RADIUS * 0.75);
+      const size = BALL_TYPES[ball.sizeKey];
+      const geometryHit = Math.hypot(ball.x - bagX, ball.y - bagY) <= p.bag.radius + size.radius + 4;
+      return geometryHit || Math.random() < p.bag.defense;
+    }
+
+    function isOpeningRoundProtected() {
+      return state.status === "running" &&
+        state.entryQueue[0] === 5 &&
+        state.simTime < settings.entryInterval;
+    }
+
+    function eliminatePlayer(player, killer, reason, mode) {
+      if (!player.alive) return;
+      if (isOpeningRoundProtected()) {
+        if (!player.openingSaveLogged) {
+          logEvent(`${player.id} 아웃 판정 보류: 첫 1분 입장 흐름 확인 구간`, "warn");
+          player.openingSaveLogged = true;
+        }
+        return;
+      }
+      player.alive = false;
+      player.outReason = reason;
+      player.collectTimer = 0;
+      if (player.collectStarted) {
+        player.collectStarted = false;
+        logEvent(`${player.id}이 아웃되어 수집 승리 실패`, "danger");
+      }
+      if (killer && killer.id !== player.id) {
+        killer.kills += 1;
+      }
+
+      const dropped = player.balls;
+      for (let i = 0; i < dropped; i += 1) {
+        const pt = {
+          x: clamp(player.x + rand(-28, 28), 16, ARENA - 16),
+          y: clamp(player.y + rand(-28, 28), 16, ARENA - 16)
+        };
+        state.balls.push(createStationaryBall(pt.x, pt.y));
+      }
+      player.balls = 0;
+      state.eliminatedOrder.push(player);
+      const killerText = killer && killer.id !== player.id ? `${killer.id}이 ` : "";
+      const text = mode === "line"
+        ? `${player.id}가 선을 밟아 아웃`
+        : killer && killer.id !== player.id
+          ? `${player.id}가 ${killer.id}의 공을 맞아 아웃`
+          : `${player.id}가 외부 공에 맞아 아웃`;
+      state.lastOutSummary = text;
+      logEvent(`${text}${dropped ? `, 공 ${dropped}개 드롭` : ""}`, "danger");
+      updateOutList();
+    }
+
+    function updateOutList() {
+      const out = state.players.filter((p) => p.entered && !p.alive);
+      dom.outCountText.textContent = `${out.length}명`;
+      dom.outList.innerHTML = out.length
+        ? out.map((p) => `<span class="out-pill">${p.id} · ${escapeHtml(p.outReason || "탈락")}</span>`).join("")
+        : `<span style="color:#8fa1ba;font-size:12px;">아직 탈락자가 없습니다.</span>`;
+    }
+
+    function checkForcedEntryRules() {
+      if (state.phase !== "combat" || state.status !== "running") return;
+      if (state.entryQueue[0] === 5 && state.simTime < settings.entryInterval) return;
+      const alive = alivePlayers();
+      if (state.entryQueue.length && alive.length < 4) {
+        triggerNextEntry(intervalCauseText("경기장 내 생존자 4명 미만"));
+        return;
+      }
+      const counts = zoneCounts();
+      const hasEmptyZone = Object.values(counts).some((count) => count === 0);
+      if (state.entryQueue.length && hasEmptyZone) {
+        triggerNextEntry(intervalCauseText("특정 구역 최소 인원 0명"));
+      }
+    }
+
+    function intervalCauseText(ruleText) {
+      return state.lastOutSummary ? `${state.lastOutSummary} · ${ruleText}` : ruleText;
+    }
+
+    function checkLastManStanding() {
+      if (state.status !== "running") return;
+      const alive = alivePlayers();
+      if (state.entryQueue.length) return;
+      if (alive.length === 1) {
+        endGame(alive[0], "Last Man Standing", `${alive[0].id}이 최후의 1인으로 승리`);
+      }
+      if (alive.length === 0 && state.players.length) {
+        const lastOut = state.eliminatedOrder[state.eliminatedOrder.length - 1] || state.players[0];
+        endGame(lastOut, "Sudden Collapse", "동시 아웃으로 마지막 탈락자가 승자로 처리");
+      }
+    }
+
+    function endGame(winner, reason, detail) {
+      if (state.status === "ended") return;
+      state.status = "ended";
+      state.phase = "ended";
+      state.winner = winner;
+      state.winReason = reason;
+      dom.pauseBtn.disabled = true;
+      logEvent(detail, "good");
+      renderResults(winner, reason, detail);
+      dom.resultScreen.classList.remove("hidden");
+      updateScoreboard();
+    }
+
+    function calculateResults() {
+      const players = state.players.slice();
+      const alive = players.filter((p) => p.entered && p.alive);
+      const eliminated = state.eliminatedOrder.slice().reverse();
+      const notEntered = players.filter((p) => !p.entered);
+      const ordered = alive.concat(eliminated).concat(notEntered);
+      const unique = [];
+      ordered.forEach((p) => {
+        if (!unique.includes(p)) unique.push(p);
+      });
+      return unique.map((p, index) => {
+        const rank = index + 1;
+        const placement = rank === 1 ? 10 : rank === 2 ? 7 : rank === 3 ? 5 : rank === 4 ? 3 : 1;
+        const earlyBonus = p.entryIndex <= 5 ? 3 : p.entryIndex <= 10 ? 2 : p.entryIndex <= 15 ? 1 : 0;
+        const collectBonus = p.collectBonusAwarded ? 2 : 0;
+        const score = placement + earlyBonus + p.kills + collectBonus;
+        return { player: p, rank, score, placement, earlyBonus, collectBonus };
+      });
+    }
+
+    function renderResults(winner, reason, detail) {
+      const results = calculateResults();
+      const mvpKills = maxBy(state.players, (p) => p.kills);
+      const mvpBalls = maxBy(state.players, (p) => p.maxBalls);
+      const mvpSurvival = maxBy(state.players, (p) => p.survivalTime);
+
+      dom.resultReason.textContent = `${reason} · ${detail}`;
+      dom.winnerText.textContent = winner ? winner.id : "-";
+      dom.winnerDetail.textContent = winner
+        ? `${winner.kills}킬 · 최대 공 ${winner.maxBalls}개 · 생존 ${fmtTime(winner.survivalTime)}`
+        : "승자 없음";
+      dom.mvpKills.textContent = mvpKills ? `${mvpKills.id} (${mvpKills.kills}킬)` : "-";
+      dom.mvpBalls.textContent = mvpBalls ? `${mvpBalls.id} (${mvpBalls.maxBalls}개)` : "-";
+      dom.mvpSurvival.textContent = mvpSurvival ? `${mvpSurvival.id} (${fmtTime(mvpSurvival.survivalTime)})` : "-";
+      dom.resultRows.innerHTML = results.map(({ player, rank, score }) => {
+        const bag = player.hasBag ? `${player.bag.name} / ${player.bag.icon}` : "없음";
+        const status = player.alive ? "생존" : player.entered ? player.outReason || "탈락" : "미입장";
+        return `
+          <tr>
+            <td>${rank}</td>
+            <td>${player.id}</td>
+            <td>${score}</td>
+            <td>${player.kills}</td>
+            <td>${player.maxBalls}</td>
+            <td>${fmtTime(player.survivalTime)}</td>
+            <td>${escapeHtml(bag)}</td>
+            <td>${escapeHtml(status)}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function maxBy(list, getter) {
+      if (!list.length) return null;
+      return list.reduce((best, item) => getter(item) > getter(best) ? item : best, list[0]);
+    }
+
+    function updateScoreboard() {
+      const alive = alivePlayers();
+      const entered = enteredPlayers();
+      const challenger = alive.find((p) => p.collectStarted);
+      const maxCollector = maxBy(alive, (p) => p.balls) || null;
+      dom.phaseText.textContent = phaseLabel();
+      dom.clockText.textContent = fmtTime(state.simTime);
+      if (state.status === "drawing") {
+        dom.aliveText.textContent = `0 / ${settings.playerCount}`;
+        dom.enteredText.textContent = `추첨 ${Math.min(state.drawRevealCount, state.drawAssignments.length)}명`;
+        dom.nextText.textContent = "P1";
+        dom.entryTimerText.textContent = "추첨 완료 후";
+        dom.intervalText.textContent = "-";
+        dom.intervalSubText.textContent = "경기 전";
+        dom.challengerText.textContent = "-";
+        dom.challengerTimerText.textContent = `목표 ${settings.collectTarget}개`;
+        dom.winProgressText.textContent = "추첨 중";
+        dom.ballsText.textContent = `초기 공 ${settings.initialBalls}개`;
+        dom.speedText.textContent = `x${settings.simSpeed}`;
+        return;
+      }
+      dom.aliveText.textContent = `${alive.length} / ${settings.playerCount}`;
+      dom.enteredText.textContent = `입장 ${entered.length}명`;
+      dom.nextText.textContent = getNextEntryLabel();
+      dom.entryTimerText.textContent = state.entryQueue.length && state.phase === "combat"
+        ? `${Math.ceil(state.nextEntryTimer)}초 후`
+        : state.entryQueue.length ? "인터벌 대기" : "모두 입장";
+      dom.intervalText.textContent = state.phase === "interval" ? `${Math.ceil(state.intervalTimer)}초` : "-";
+      dom.intervalSubText.textContent = state.phase === "interval" ? "공격/줍기 금지" : "전투 중";
+      dom.challengerText.textContent = challenger ? `${challenger.id} · ${challenger.balls}개` : "-";
+      dom.challengerTimerText.textContent = challenger ? `${fmtTime(challenger.collectTimer)} 남음` : `목표 ${settings.collectTarget}개`;
+      dom.winProgressText.textContent = state.winner ? `${state.winner.id} 승리` : `${alive.length}명 생존`;
+      dom.ballsText.textContent = `필드 공 ${state.balls.length}개 · 최다 ${maxCollector ? `${maxCollector.id} ${maxCollector.balls}개` : "-"}`;
+      dom.speedText.textContent = `x${settings.simSpeed}`;
+    }
+
+    function phaseLabel() {
+      if (state.status === "start") return "대기";
+      if (state.status === "drawing") return "입장 순서 추첨";
+      if (state.status === "ended") return "종료";
+      if (state.paused) return "일시정지";
+      if (state.phase === "interval") return "30초 인터벌";
+      if (state.phase === "combat") return "일반 전투";
+      return "준비";
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, ARENA, ARENA);
+      drawArena();
+      drawBallTrails();
+      drawBalls();
+      drawPlayers();
+      if (state.phase === "interval") drawIntervalOverlay();
+      if (state.paused) drawPauseOverlay();
+    }
+
+    function drawArena() {
+      const gradient = ctx.createLinearGradient(0, 0, ARENA, ARENA);
+      gradient.addColorStop(0, "#1477c9");
+      gradient.addColorStop(0.52, "#0b5fa7");
+      gradient.addColorStop(1, "#08457d");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, ARENA, ARENA);
+
+      // 바닥 그리드와 미터 감각을 제공하는 보조선.
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.08)";
+      ctx.lineWidth = 1;
+      for (let i = 50; i < ARENA; i += 50) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0);
+        ctx.lineTo(i, ARENA);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, i);
+        ctx.lineTo(ARENA, i);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.92)";
+      ctx.lineWidth = LINE_WIDTH;
+      ctx.beginPath();
+      ctx.moveTo(400, 0);
+      ctx.lineTo(400, ARENA);
+      ctx.moveTo(0, 400);
+      ctx.lineTo(ARENA, 400);
+      ctx.stroke();
+      ctx.restore();
+
+      zones.forEach((z) => {
+        ctx.save();
+        ctx.fillStyle = "rgba(255,255,255,0.14)";
+        ctx.font = "700 54px Segoe UI, Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(z.label, z.cx, z.cy);
+        ctx.restore();
+      });
+
+      drawGlassWallsAndDoors();
+      drawEquipmentHints();
+    }
+
+    function drawGlassWallsAndDoors() {
+      ctx.save();
+      ctx.strokeStyle = "rgba(210,244,255,0.48)";
+      ctx.lineWidth = 12;
+      ctx.strokeRect(6, 6, ARENA - 12, ARENA - 12);
+      ctx.strokeStyle = "rgba(255,255,255,0.8)";
+      ctx.lineWidth = 3;
+      ctx.strokeRect(15, 15, ARENA - 30, ARENA - 30);
+
+      const doors = [
+        { x: 360, y: 6, w: 80, h: 16 },
+        { x: 778, y: 360, w: 16, h: 80 },
+        { x: 360, y: 778, w: 80, h: 16 },
+        { x: 6, y: 360, w: 16, h: 80 }
+      ];
+      doors.forEach((d) => {
+        ctx.fillStyle = "rgba(8,17,31,0.86)";
+        ctx.fillRect(d.x, d.y, d.w, d.h);
+        ctx.strokeStyle = "#e0f2fe";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(d.x, d.y, d.w, d.h);
+      });
+      ctx.restore();
+    }
+
+    function drawEquipmentHints() {
+      ctx.save();
+      ctx.fillStyle = "rgba(5,12,22,0.48)";
+      ctx.fillRect(300, 754, 200, 28);
+      ctx.fillStyle = "#c7d2fe";
+      ctx.font = "700 11px Segoe UI, Arial";
+      ctx.textAlign = "center";
+      ctx.fillText("EQUIPMENT TABLE", 400, 772);
+      ctx.fillStyle = "rgba(5,12,22,0.38)";
+      ctx.fillRect(280, 18, 240, 24);
+      ctx.fillStyle = "#dbeafe";
+      ctx.fillText("AUDIENCE THROW-IN LANE", 400, 34);
+      ctx.restore();
+    }
+
+    function trailColor(type) {
+      if (type === "bag") return "rgba(168, 85, 247, 0.88)";
+      if (type === "floor") return "rgba(250, 204, 21, 0.82)";
+      if (type === "wall") return "rgba(34, 211, 238, 0.8)";
+      if (type === "dead") return "rgba(148, 163, 184, 0.34)";
+      return "rgba(251, 146, 60, 0.72)";
+    }
+
+    function drawBallTrails() {
+      state.balls.forEach((ball) => {
+        if (!ball.trail || ball.trail.length < 2) return;
+        ctx.save();
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        for (let i = 1; i < ball.trail.length; i += 1) {
+          const prev = ball.trail[i - 1];
+          const point = ball.trail[i];
+          const alpha = i / ball.trail.length;
+          ctx.strokeStyle = trailColor(point.type);
+          ctx.globalAlpha = 0.18 + alpha * 0.68;
+          ctx.lineWidth = 2 + alpha * 2.6;
+          ctx.beginPath();
+          ctx.moveTo(prev.x, prev.y);
+          ctx.lineTo(point.x, point.y);
+          ctx.stroke();
+        }
+        ctx.restore();
+      });
+    }
+
+    function drawBalls() {
+      state.balls.forEach((ball) => {
+        const size = BALL_TYPES[ball.sizeKey];
+        ctx.save();
+        ctx.globalAlpha = ball.moving ? 0.96 : 0.88;
+        ctx.fillStyle = ball.direct ? "#fff7ed" : size.color;
+        ctx.strokeStyle = ball.direct ? "#fb923c" : "rgba(15,23,42,0.9)";
+        ctx.lineWidth = ball.direct ? 2 : 1;
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, size.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        if (ball.moving) {
+          ctx.strokeStyle = ball.direct ? "rgba(251,146,60,0.45)" : "rgba(226,232,240,0.25)";
+          ctx.beginPath();
+          ctx.moveTo(ball.x, ball.y);
+          ctx.lineTo(ball.x - ball.vx * 0.08, ball.y - ball.vy * 0.08);
+          ctx.stroke();
+        }
+        ctx.restore();
+      });
+    }
+
+    function drawPlayers() {
+      state.players.forEach((p) => {
+        if (!p.entered) return;
+        if (!p.alive) {
+          drawEliminatedPlayer(p);
+          return;
+        }
+        drawPlayer(p);
+      });
+    }
+
+    function drawEliminatedPlayer(p) {
+      const sideX = p.number % 2 === 0 ? ARENA - 30 : 30;
+      const sideY = 64 + (p.number % 10) * 34;
+      ctx.save();
+      ctx.globalAlpha = 0.38;
+      ctx.fillStyle = "#64748b";
+      ctx.beginPath();
+      ctx.arc(sideX, sideY, 11, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#e2e8f0";
+      ctx.font = "700 8px Segoe UI, Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(p.id, sideX, sideY);
+      ctx.restore();
+    }
+
+    function drawPlayer(p) {
+      ctx.save();
+      const isChallenger = p.collectStarted;
+      const teamRing = settings.teamMode ? (p.team === "A" ? "#22d3ee" : "#fb7185") : "rgba(255,255,255,0.9)";
+
+      if (p.hasBag) {
+        const bagDir = p.facing + Math.PI;
+        const bagX = p.x + Math.cos(bagDir) * (PLAYER_RADIUS * 0.92);
+        const bagY = p.y + Math.sin(bagDir) * (PLAYER_RADIUS * 0.92);
+        ctx.fillStyle = p.bag.color;
+        ctx.strokeStyle = "rgba(5,12,22,0.85)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(bagX, bagY, p.bag.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = p.color;
+      ctx.strokeStyle = isChallenger ? "#f5c84c" : teamRing;
+      ctx.lineWidth = isChallenger ? 5 : 3;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, PLAYER_RADIUS, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#06101d";
+      ctx.font = p.number >= 10 ? "800 10px Segoe UI, Arial" : "800 12px Segoe UI, Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`P${p.number}`, p.x, p.y);
+
+      if (p.balls > 0) {
+        ctx.fillStyle = "#0f172a";
+        ctx.strokeStyle = "#f8fafc";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(p.x + 11, p.y - 27, 26, 16, 7);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "#fff";
+        ctx.font = "700 10px Segoe UI, Arial";
+        ctx.fillText(p.balls, p.x + 24, p.y - 19);
+      }
+
+      if (p.collectStarted) {
+        ctx.strokeStyle = "rgba(245,200,76,0.5)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 25 + Math.sin(state.simTime * 6) * 2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function compactText(text, maxLength) {
+      if (!text) return "-";
+      return text.length > maxLength ? `${text.slice(0, maxLength - 1)}…` : text;
+    }
+
+    function drawIntervalOverlay() {
+      ctx.save();
+      ctx.fillStyle = "rgba(250, 204, 21, 0.18)";
+      ctx.fillRect(0, 0, ARENA, ARENA);
+      ctx.fillStyle = "rgba(8,17,31,0.78)";
+      ctx.fillRect(130, 318, 540, 164);
+      ctx.strokeStyle = "rgba(250,204,21,0.9)";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(130, 318, 540, 164);
+      ctx.fillStyle = "#fef3c7";
+      ctx.font = "800 26px Segoe UI, Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`INTERVAL ${Math.ceil(state.intervalTimer)}s`, 400, 348);
+      ctx.fillStyle = "#bfdbfe";
+      ctx.font = "800 15px Segoe UI, Arial";
+      ctx.fillText("시작 이유", 400, 382);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "700 17px Segoe UI, Arial";
+      ctx.fillText(compactText(state.intervalReason, 48), 400, 406);
+      ctx.fillStyle = "#fde68a";
+      ctx.font = "800 15px Segoe UI, Arial";
+      ctx.fillText("입장 플레이어", 400, 436);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "800 18px Segoe UI, Arial";
+      ctx.fillText(compactText(state.intervalEntrantText, 34), 400, 458);
+      ctx.restore();
+    }
+
+    function drawPauseOverlay() {
+      ctx.save();
+      ctx.fillStyle = "rgba(2,6,23,0.46)";
+      ctx.fillRect(0, 0, ARENA, ARENA);
+      ctx.fillStyle = "#fff";
+      ctx.font = "800 30px Segoe UI, Arial";
+      ctx.textAlign = "center";
+      ctx.fillText("PAUSED", 400, 400);
+      ctx.restore();
+    }
+
+    function animationLoop(now) {
+      const rawDt = Math.min(0.05, (now - lastFrame) / 1000);
+      lastFrame = now;
+      update(rawDt);
+      draw();
+      requestAnimationFrame(animationLoop);
+    }
+
+    function bindEvents() {
+      dom.startBtn.addEventListener("click", () => {
+        clearDrawTimers();
+        syncSettingsToStart();
+        dom.startScreen.classList.remove("hidden");
+      });
+      dom.modalStartBtn.addEventListener("click", () => {
+        syncStartToSettings();
+        beginDraft();
+      });
+      dom.drawStartBtn.addEventListener("click", () => {
+        startGame(state.drawAssignments);
+      });
+      dom.pauseBtn.addEventListener("click", () => {
+        if (state.status !== "running") return;
+        state.paused = !state.paused;
+        dom.pauseBtn.textContent = state.paused ? "계속" : "일시정지";
+        updateScoreboard();
+      });
+      dom.restartBtn.addEventListener("click", () => beginDraft());
+      dom.resultRestartBtn.addEventListener("click", () => beginDraft());
+      dom.resultCloseBtn.addEventListener("click", () => {
+        dom.resultScreen.classList.add("hidden");
+      });
+
+      Object.values(fields).forEach((field) => {
+        if (!field || !field.addEventListener) return;
+        field.addEventListener("input", () => {
+          updateRangeOutputs();
+          settings = readSettings();
+          if (field === fields.playerCount) fields.startPlayers.value = field.value;
+          if (field === fields.initialBalls) fields.startInitialBalls.value = field.value;
+          if (field === fields.intervalBalls) fields.startIntervalBalls.value = field.value;
+          if (field === fields.simSpeed) fields.startSpeed.value = field.value;
+          updateScoreboard();
+        });
+      });
+
+      fields.startPlayers.addEventListener("input", () => fields.playerCount.value = fields.startPlayers.value);
+      fields.startInitialBalls.addEventListener("input", () => fields.initialBalls.value = fields.startInitialBalls.value);
+      fields.startIntervalBalls.addEventListener("input", () => fields.intervalBalls.value = fields.startIntervalBalls.value);
+      fields.startSpeed.addEventListener("input", () => fields.simSpeed.value = fields.startSpeed.value);
+    }
+
+    bindEvents();
+    updateRangeOutputs();
+    updateScoreboard();
+    draw();
+    requestAnimationFrame(animationLoop);
+  </script>
+</body>
+</html>
